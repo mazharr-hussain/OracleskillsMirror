@@ -24,7 +24,7 @@ jobs:
             --exclude '.github/workflows/' \
             /tmp/upstream/ ./
 
-      - name: Add "strict": false to each plugin entry (required by claude.ai)
+      - name: Add strict false to each plugin entry (required by claude.ai)
         run: |
           f=.claude-plugin/marketplace.json
           jq '.plugins |= map(. + {"strict": false})' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
