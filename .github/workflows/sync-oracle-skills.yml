@@ -1,0 +1,39 @@
+name: Sync from oracle/skills
+
+on:
+  schedule:
+    - cron: "17 2 * * *"   # daily, 05:17 Doha time
+  workflow_dispatch: {}      # lets you run it manually from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out this repo
+        uses: actions/checkout@v4
+
+      - name: Copy the latest oracle/skills over this repo
+        run: |
+          git clone --depth 1 https://github.com/oracle/skills.git /tmp/upstream
+          # Mirror Oracle's files exactly; keep only this repo's git data and this workflow
+          rsync -a --delete \
+            --exclude '.git/' \
+            --exclude '.github/workflows/' \
+            /tmp/upstream/ ./
+
+      - name: Add "strict": false to each plugin entry (required by claude.ai)
+        run: |
+          f=.claude-plugin/marketplace.json
+          jq '.plugins |= map(. + {"strict": false})' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+
+      - name: Commit and push if anything changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898699+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && { echo "No changes from Oracle."; exit 0; }
+          git commit -m "Sync from oracle/skills $(git -C /tmp/upstream rev-parse --short HEAD)"
+          git push
